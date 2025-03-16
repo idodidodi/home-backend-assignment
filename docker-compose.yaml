@@ -1,6 +1,6 @@
 version: '3'
 volumes:
-  mongo:
+  # mongo:
   redpanda:
 services:
   postgres:
@@ -65,16 +65,16 @@ services:
       - 8014:8080
     depends_on:
       - redpanda
-  mongo: 
-    image: mongo:7
-    restart: always
-    ports: 
-      - 27017:27017
-    volumes:
-      - mongo:/data/db
-  rabbitmq:
-   image: rabbitmq:3-management
-   restart: always
-   ports:
-     - 5672:5672
-     - 15672:15672
+  # mongo: 
+  #   image: mongo:7
+  #   restart: always
+  #   ports: 
+  #     - 27017:27017
+  #   volumes:
+  #     - mongo:/data/db
+  # rabbitmq:
+  #  image: rabbitmq:3-management
+  #  restart: always
+  #  ports:
+  #    - 5672:5672
+  #    - 15672:15672
