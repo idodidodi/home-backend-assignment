@@ -1,42 +1,98 @@
 services:
   postgres:
-    image: postgres
+    image: postgres:15-alpine
     restart: always
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: streets
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
   adminer:
     image: adminer
     restart: always
     ports:
       - 8089:8080  
+    networks:
+      - app-network
+
   redpanda:
-    image: redpandadata/redpanda:latest
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.16
+    container_name: redpanda
     command:
-      - redpanda start
-      - --smp 1
-      - --memory 1G
-      - --reserve-memory 0M
-      - --overprovisioned
-      - --node-id 0
-      - --check=false
-      - --pandaproxy-addr INSIDE://0.0.0.0:28082,OUTSIDE://0.0.0.0:8082
-      - --advertise-pandaproxy-addr INSIDE://redpanda:28082,OUTSIDE://localhost:8082
-      - --kafka-addr INSIDE://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-      - --advertise-kafka-addr INSIDE://redpanda:29092,OUTSIDE://localhost:9092
-      - --rpc-addr 0.0.0.0:33145
-      - --advertise-rpc-addr redpanda:33145
-    ports:
-      - 8081:8081
-      - 8082:8082
-      - 9092:9092
-      - 9644:9644
-  redpanda-console:
-    image: redpandadata/console:latest
-    ports:
-      - "8014:8080"
-    environment:
-      - REDPANDA_BROKERS=redpanda:29092
-    depends_on:
       - redpanda
+      - start
+      - --smp
+      - '1'
+      - --memory
+      - '1G'
+      - --mode
+      - dev-container
+      - --overprovisioned
+      - --kafka-addr
+      - INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - INTERNAL://redpanda:29092,EXTERNAL://localhost:9092
+    ports:
+      - 9092:9092
+      - 29092:29092
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:v2.3.8
+    container_name: redpanda-console
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_BROKERS=redpanda:29092
+      - CONNECT_ENABLED=false
+      - SCHEMA_REGISTRY_ENABLED=false
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  publisher:
+    build: .
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - KAFKA_BROKER=redpanda:29092
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=streets
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  redpanda_data:
+
+networks:
+  app-network:
+    name: app-network
+    driver: bridge
