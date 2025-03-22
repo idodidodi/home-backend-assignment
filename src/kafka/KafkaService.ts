@@ -1,6 +1,10 @@
 import { Kafka, Producer, Partitioners } from 'kafkajs';
 import { city } from '../israelistreets/cities';
 import { Street } from '../israelistreets/StreetsService';
+import { deflate } from 'zlib';
+import { promisify } from 'util';
+
+const deflateAsync = promisify(deflate);
 
 export interface StreetsMessage {
     city: city;
@@ -37,12 +41,15 @@ export class KafkaService {
         };
 
         try {
+            const jsonMessage = JSON.stringify(message);
+            const compressedMessage = await deflateAsync(jsonMessage);
+            
             await producer.send({
                 topic: this.TOPIC,
                 messages: [
                     { 
                         key: city,
-                        value: JSON.stringify(message)
+                        value: compressedMessage
                     }
                 ]
             });

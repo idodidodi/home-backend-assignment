@@ -1,6 +1,10 @@
 import { Kafka, Consumer } from 'kafkajs';
 import { Client } from 'pg';
 import { StreetsMessage } from '../kafka/KafkaService';
+import { inflate } from 'zlib';
+import { promisify } from 'util';
+
+const inflateAsync = promisify(inflate);
 
 class ConsumerService {
     private static _consumer: Consumer;
@@ -54,7 +58,9 @@ class ConsumerService {
 
     private static async handleMessage(message: any) {
         try {
-            const data: StreetsMessage = JSON.parse(message.value.toString());
+            // Decompress the message
+            const decompressedMessage = await inflateAsync(message.value);
+            const data: StreetsMessage = JSON.parse(decompressedMessage.toString());
             const pgClient = await this.getPgClient();
 
             // Begin transaction
