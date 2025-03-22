@@ -30,8 +30,20 @@ export class StreetsService {
     }
 
     private static getHebrewCityName(englishName: string): string | undefined {
-        return Object.entries(englishNameByCity).find(([_, english]) =>
+        // Try exact match first
+        const exactMatch = Object.entries(englishNameByCity).find(([_, english]) =>
             english === englishName
+        )?.[0];
+        if (exactMatch) return exactMatch;
+
+        // Try with capitalized words
+        const capitalizedName = englishName
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+        
+        return Object.entries(englishNameByCity).find(([_, english]) =>
+            english === capitalizedName
         )?.[0];
     }
 
