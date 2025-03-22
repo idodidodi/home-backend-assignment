@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Program",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "src/consumer-service/index.ts",
+            "runtimeArgs": ["-r", "ts-node/register"],
+            "console": "integratedTerminal",
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "sourceMaps": true
+        }
+    ]
+} 
