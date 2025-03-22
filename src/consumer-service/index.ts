@@ -31,14 +31,21 @@ class ConsumerService {
                 password: process.env.POSTGRES_PASSWORD || 'postgres',
             });
             await this._pgClient.connect();
-            
+
             // Create table if not exists
             await this._pgClient.query(`
-                CREATE TABLE IF NOT EXISTS streets (
-                    street_id INTEGER PRIMARY KEY,
-                    street_name VARCHAR(255) NOT NULL,
-                    city_name VARCHAR(255) NOT NULL,
-                    timestamp TIMESTAMP NOT NULL
+                CREATE TABLE IF NOT EXISTS streets (    
+                    street_id INT PRIMARY KEY,
+                    street_name TEXT NOT NULL,
+                    region_code NUMERIC NOT NULL,
+                    region_name TEXT NOT NULL,
+                    city_code NUMERIC NOT NULL,
+                    city_name TEXT NOT NULL,
+                    street_code NUMERIC NOT NULL,
+                    street_name_status TEXT NOT NULL,
+                    official_code NUMERIC NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
             `);
         }
@@ -49,19 +56,44 @@ class ConsumerService {
         try {
             const data: StreetsMessage = JSON.parse(message.value.toString());
             const pgClient = await this.getPgClient();
-            
+
             // Begin transaction
             await pgClient.query('BEGIN');
-            
+
             try {
                 // Insert each street
                 for (const street of data.streets) {
                     await pgClient.query(
-                        'INSERT INTO streets (street_id, street_name, city_name, timestamp) VALUES ($1, $2, $3, $4) ON CONFLICT (street_id) DO UPDATE SET street_name = $2, city_name = $3, timestamp = $4',
-                        [street.streetId, street.street_name, data.city, data.timestamp]
+                        `INSERT INTO streets (
+                            street_id, street_name, region_code, region_name,
+                            city_code, city_name, street_code,
+                            street_name_status, official_code,
+                            created_at, updated_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ON CONFLICT (street_id) DO UPDATE SET
+                            street_name = $2,
+                            region_code = $3,
+                            region_name = $4,
+                            city_code = $5,
+                            city_name = $6,
+                            street_code = $7,
+                            street_name_status = $8,
+                            official_code = $9,
+                            updated_at = CURRENT_TIMESTAMP`,
+                        [
+                            street.streetId,
+                            street.street_name,
+                            street.region_code,
+                            street.region_name,
+                            street.city_code,
+                            data.city,
+                            street.street_code,
+                            street.street_name_status,
+                            street.official_code
+                        ]
                     );
                 }
-                
+
                 // Commit transaction
                 await pgClient.query('COMMIT');
                 console.log(`Successfully stored ${data.streets.length} streets for ${data.city}`);
@@ -78,10 +110,10 @@ class ConsumerService {
     static async start() {
         try {
             const consumer = await this.getConsumer();
-            
+
             // Subscribe to the topic
             await consumer.subscribe({ topic: this.TOPIC, fromBeginning: true });
-            
+
             // Start processing messages
             await consumer.run({
                 eachMessage: async ({ message }) => {
@@ -90,7 +122,7 @@ class ConsumerService {
             });
 
             console.log(`Consumer started. Listening to topic: ${this.TOPIC}`);
-            
+
             // Handle graceful shutdown
             process.on('SIGTERM', async () => {
                 console.log('Received SIGTERM. Cleaning up...');
