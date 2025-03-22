@@ -1,11 +1,11 @@
-import { Kafka, Producer } from 'kafkajs';
+import { Kafka, Producer, Partitioners } from 'kafkajs';
 import { city } from '../israelistreets/cities';
 import { Street } from '../israelistreets/StreetsService';
 
 export interface StreetsMessage {
     city: city;
     timestamp: string;
-    streets: Pick<Street, 'streetId' | 'street_name'>[];
+    streets: Street[];
 }
 
 export class KafkaService {
@@ -19,13 +19,15 @@ export class KafkaService {
                 clientId: this.CLIENT_ID,
                 brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
             });
-            this._producer = kafka.producer();
+            this._producer = kafka.producer({
+                createPartitioner: Partitioners.LegacyPartitioner
+            });
             await this._producer.connect();
         }
         return this._producer;
     }
 
-    static async publishStreets(city: city, streets: Pick<Street, 'streetId' | 'street_name'>[]): Promise<void> {
+    static async publishStreets(city: city, streets: Street[]): Promise<void> {
         const producer = await this.getProducer();
         
         const message: StreetsMessage = {
