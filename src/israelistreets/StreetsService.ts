@@ -57,35 +57,32 @@ export class StreetsService {
         };
     }
 
-    static async getStreetsInCity(cityArg: string): Promise<{ city: city, streets: Pick<Street, 'streetId' | 'street_name'>[] }> {
+    static async getStreetsInCity(cityArg: string): Promise<{ city: city, streets: Street[] }> {
         const { englishName, hebrewName } = this.validateAndGetCity(cityArg);
-        console.log('getApiFields', this.getApiFields());
-        const res = (await this.axios.post('https://data.gov.il/api/3/action/datastore_search', {
-            resource_id: `1b14e41c-85b3-4c21-bdce-9fe48185ffca`,
+        
+        const res = (await this.axios.post('https://data.gov.il/api/3/action/datastore_search', { 
+            resource_id: `1b14e41c-85b3-4c21-bdce-9fe48185ffca`, 
             filters: { city_name: hebrewName },
             fields: ["_id", "region_code", "region_name", "city_code", "city_name",
-                "street_code", "street_name", "street_name_status",
-                "official_code"],
-            limit: 10
+                "street_code", "street_name", "street_name_status", "official_code"],
+            limit: 100000
         })).data
-
-        // limit: 100000 
 
         const results = res.result.records
         if (!results || !results.length) {
             throw new Error('No streets found for city: ' + englishName)
         }
-        const streets: Pick<Street, 'streetId' | 'street_name'>[] = results.map((street: ApiStreet) => {
+        const streets: Street[] = results.map((street: ApiStreet) => {
             return { 
-                streetId: street._id, 
+                streetId: street._id,
                 street_name: street.street_name.trim(),
                 region_code: street.region_code,
-                region_name: street.region_name,
+                region_name: street.region_name.trim(),
                 city_code: street.city_code,
-                city_name: street.city_name,
+                city_name: englishName,
                 street_code: street.street_code,
                 street_name_status: street.street_name_status,
-                official_code: street.official_code,
+                official_code: street.official_code
             }
         })
         return { city: englishName, streets }
