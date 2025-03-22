@@ -48,7 +48,7 @@ export class StreetsService {
 
         const hebrewName = this.getHebrewCityName(cityArg);
         if (!hebrewName) {
-            throw new Error(`Invalid city name: "${cityArg}". Please provide the city name in English.`);
+            throw new Error(`City "${cityArg}" not found in the list of supported cities.`);
         }
 
         return {
