@@ -13,6 +13,3 @@ COPY . .
 
 # Build TypeScript
 RUN npm run build
-
-# Command to run the service
-CMD ["node", "dist/index.js"] 
